@@ -5,3 +5,4 @@ requests
 netmiko
 python-multipart
 python-dotenv
+gh
