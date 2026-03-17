@@ -40,6 +40,13 @@ def add_vlan_to_device(
             username=nxapi_username,
             password=nxapi_password
         )
+        save_result = send_nxapi_commands(
+            device=device,
+            commands=["copy running-config startup-config"],
+            username=nxapi_username,
+            password=nxapi_password
+        )
+        
         return {
             "device": device["device_name"],
             "method": "nxapi",
