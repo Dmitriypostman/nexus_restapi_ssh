@@ -1,69 +1,66 @@
-import json
-import os
-from pathlib import Path
-
-from dotenv import load_dotenv
-
-from drivers.nxapi_driver import add_vlan_nxapi
-from drivers.ssh_driver import add_vlan_ssh
-
-load_dotenv()
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-INVENTORY_FILE = BASE_DIR / "inventory.json"
-
-CREDENTIALS = {
-    "nxos_lab": {
-        "username": os.getenv("NXOS_LAB_USERNAME"),
-        "password": os.getenv("NXOS_LAB_PASSWORD"),
-    },
-    "catalyst_lab": {
-        "username": os.getenv("CATALYST_LAB_USERNAME"),
-        "password": os.getenv("CATALYST_LAB_PASSWORD"),
-    },
-}
+from drivers.nxapi_driver import send_nxapi_commands
+from drivers.ssh_driver import send_ssh_commands
 
 
-def load_inventory():
-    with open(INVENTORY_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+def build_vlan_commands(vlan_id: int, vlan_name: str, trunk_interfaces: list[str]) -> list[str]:
+    commands = [
+        f"vlan {vlan_id}",
+        f"name {vlan_name}"
+    ]
+
+    for interface in trunk_interfaces:
+        commands.extend([
+            f"interface {interface}",
+            f"switchport trunk allowed vlan add {vlan_id}"
+        ])
+
+    return commands
 
 
-def get_device_by_name(device_name: str):
-    inventory = load_inventory()
-    for device in inventory.get("devices", []):
-        if device.get("device_name") == device_name:
-            return device
-    return None
+def add_vlan_to_device(
+    device: dict,
+    vlan_id: int,
+    vlan_name: str,
+    nxapi_username: str,
+    nxapi_password: str,
+    ssh_username: str,
+    ssh_password: str,
+) -> dict:
+    trunk_interfaces = device.get("trunk_interfaces", [])
+    if not trunk_interfaces:
+        raise ValueError(f"Device {device['device_name']} has no trunk interfaces in inventory.")
 
+    commands = build_vlan_commands(vlan_id, vlan_name, trunk_interfaces)
+    method = device.get("connection_method", "").lower()
 
-def get_credentials_for_device(device: dict):
-    profile = device.get("credential_profile")
+    if method == "nxapi":
+        result = send_nxapi_commands(
+            device=device,
+            commands=commands,
+            username=nxapi_username,
+            password=nxapi_password
+        )
+        return {
+            "device": device["device_name"],
+            "method": "nxapi",
+            "trunk_interfaces": trunk_interfaces,
+            "commands": commands,
+            "result": result
+        }
 
-    if not profile:
-        raise ValueError(f"Device '{device.get('device_name')}' has no credential_profile")
+    if method == "ssh":
+        result = send_ssh_commands(
+            device=device,
+            commands=commands,
+            username=ssh_username,
+            password=ssh_password
+        )
+        return {
+            "device": device["device_name"],
+            "method": "ssh",
+            "trunk_interfaces": trunk_interfaces,
+            "commands": commands,
+            "result": result
+        }
 
-    creds = CREDENTIALS.get(profile)
-    if not creds:
-        raise ValueError(f"Credential profile '{profile}' not found")
-
-    username = creds.get("username")
-    password = creds.get("password")
-
-    if not username or not password:
-        raise ValueError(f"Username or password is missing for credential profile '{profile}'")
-
-    return creds
-
-
-def add_vlan_to_device_trunk(device: dict, interface_name: str, vlan_id: int):
-    connection_method = device.get("connection_method", "").lower()
-    creds = get_credentials_for_device(device)
-
-    if connection_method == "nxapi":
-        return add_vlan_nxapi(device, interface_name, vlan_id, creds)
-
-    if connection_method == "ssh":
-        return add_vlan_ssh(device, interface_name, vlan_id, creds)
-
-    return False, f"Unsupported connection method: {connection_method}"
+    raise ValueError(f"Unsupported connection method: {method}")

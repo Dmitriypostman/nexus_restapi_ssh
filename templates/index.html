@@ -1,135 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>VLAN Trunk Automation Portal</title>
+    <title>VLAN Portal</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 950px;
-            margin: 40px auto;
+            margin: 40px;
         }
-
-        h1, h2 {
-            color: #333;
+        .container {
+            max-width: 700px;
+            margin: auto;
         }
-
-        .device-box {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-            background: #fafafa;
-        }
-
-        form {
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-
         label {
             display: block;
-            margin-top: 12px;
+            margin-top: 15px;
             font-weight: bold;
         }
-
-        input, select, button {
+        select, input, button {
             width: 100%;
-            max-width: 420px;
-            padding: 8px;
-            margin-top: 6px;
+            padding: 10px;
+            margin-top: 5px;
         }
-
         button {
-            margin-top: 18px;
+            margin-top: 20px;
             cursor: pointer;
         }
-
-        .result {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 8px;
-            white-space: pre-wrap;
-        }
-
         .success {
-            background-color: #e8fff0;
-            border: 1px solid #8bc79a;
+            background: #e6ffed;
+            color: #156c2f;
+            padding: 10px;
+            margin-top: 20px;
+            border: 1px solid #b7ebc6;
         }
-
         .error {
-            background-color: #ffeaea;
-            border: 1px solid #d38c8c;
+            background: #ffeaea;
+            color: #8a1f1f;
+            padding: 10px;
+            margin-top: 20px;
+            border: 1px solid #f0bcbc;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 12px;
+            overflow-x: auto;
         }
     </style>
 </head>
 <body>
-    <h1>VLAN Trunk Automation Portal</h1>
-
-    <h2>Devices from Inventory</h2>
-
-    {% for device in devices %}
-        <div class="device-box">
-            <strong>{{ device.device_name }}</strong><br>
-            Hostname: {{ device.hostname }}<br>
-            IP address: {{ device.ip_address }}<br>
-            Connection method: {{ device.connection_method }}<br>
-            Credential profile: {{ device.credential_profile }}<br>
-            Trunk interfaces: {{ device.trunk_interfaces | join(", ") }}
-        </div>
-    {% endfor %}
-
-    <h2>Add VLAN to Trunk Interface</h2>
+<div class="container">
+    <h1>VLAN Automation Portal</h1>
 
     <form method="post" action="/add-vlan">
         <label for="device_name">Device</label>
-        <select name="device_name" id="device_name" onchange="updateInterfaces()" required>
+        <select name="device_name" id="device_name" required>
             {% for device in devices %}
-                <option value="{{ device.device_name }}">{{ device.device_name }}</option>
+                <option value="{{ device.device_name }}">
+                    {{ device.device_name }} ({{ device.connection_method }})
+                </option>
             {% endfor %}
         </select>
-
-        <label for="interface_name">Trunk Interface</label>
-        <select name="interface_name" id="interface_name" required></select>
 
         <label for="vlan_id">VLAN ID</label>
         <input type="number" name="vlan_id" id="vlan_id" min="1" max="4094" required>
 
-        <button type="submit">Add VLAN</button>
+        <label for="vlan_name">VLAN Name</label>
+        <input type="text" name="vlan_name" id="vlan_name" required>
+
+        <button type="submit">Add VLAN to All Trunks</button>
     </form>
 
-    {% if result %}
-        <div class="result {% if result.success %}success{% else %}error{% endif %}">
-            <strong>{% if result.success %}Success{% else %}Error{% endif %}</strong><br><br>
-            {{ result.message }}
-        </div>
+    {% if message %}
+        <div class="success">{{ message }}</div>
     {% endif %}
 
-    <script>
-        const devices = {{ devices | tojson }};
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
 
-        function updateInterfaces() {
-            const deviceSelect = document.getElementById("device_name");
-            const interfaceSelect = document.getElementById("interface_name");
-
-            const selectedDeviceName = deviceSelect.value;
-            const selectedDevice = devices.find(d => d.device_name === selectedDeviceName);
-
-            interfaceSelect.innerHTML = "";
-
-            if (selectedDevice && selectedDevice.trunk_interfaces) {
-                selectedDevice.trunk_interfaces.forEach(function(intf) {
-                    const option = document.createElement("option");
-                    option.value = intf;
-                    option.textContent = intf;
-                    interfaceSelect.appendChild(option);
-                });
-            }
-        }
-
-        updateInterfaces();
-    </script>
+    {% if result %}
+        <h2>Execution Details</h2>
+        <p><strong>Device:</strong> {{ result.device }}</p>
+        <p><strong>Method:</strong> {{ result.method }}</p>
+        <p><strong>Trunk Interfaces:</strong> {{ result.trunk_interfaces }}</p>
+        <p><strong>Commands:</strong></p>
+        <pre>{{ result.commands }}</pre>
+        <p><strong>Result:</strong></p>
+        <pre>{{ result.result }}</pre>
+    {% endif %}
+</div>
 </body>
 </html>
