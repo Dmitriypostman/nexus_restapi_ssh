@@ -29,7 +29,7 @@ network-automation-portal/
 
 How to Run:
 - git clone https://github.com/Dmitriypostman/network-automation-portal
-- cd nexus_restapi_ssh
+- cd network-automation-portal
 - python -m venv .venv
 - source .venv/bin/activate
 - pip install -r requirements.txt
