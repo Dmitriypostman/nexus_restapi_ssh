@@ -34,7 +34,7 @@ How to Run:
 - source .venv/bin/activate
 - pip install -r requirements.txt
 - cp .env.example .env
-- fill credentials:
+- fill credentials in .env
 - Update the inventory.json file
 - uvicorn app:app --reload
 
